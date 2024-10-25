@@ -1,15 +1,10 @@
 import fitz
 from pathlib import Path
 from minio_tools import save_in_minio
-from extractor.tools import extract_tags
+from tools import extract_tags
 
-def extract_pdf_data(
-    pdf_file,
-    # output_images_path: Path = Path("./images"),
-    # upload_images_to_minio: bool = False,
-    # minio_client: Minio = None,
-    # minio_bucket: str = "",
-):
+
+def extract_pdf_data(pdf_file, minio_path):
 
     if not pdf_file.endswith(".pdf"):
         raise ValueError("path must be a pdf file")
@@ -59,11 +54,11 @@ def extract_pdf_data(
 
     output_dict = {
         "name": filepath.parts[-1],
-        "path": str(filepath),
+        "path": str(minio_path),
         # "type": "TYPE",
         # "rubrique": "RU",
         "extension": filepath.name.split(".")[-1],
-        "tags": tags,
+        "tags": list(set(tags)),
         "images": images,
         "pages": pages,
     }

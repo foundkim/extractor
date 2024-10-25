@@ -1,10 +1,13 @@
 import os
 import subprocess
+from pathlib import Path
 from openpyxl import load_workbook
 import shutil
 import pathlib
-from scripts.extractor.minio_tools import save_in_minio
-from scripts.extractor.tools import extract_tags
+import pandas as pd
+from minio_tools import save_in_minio
+from tools import extract_tags
+
 
 
 def extract_image(excel_file):
@@ -39,32 +42,34 @@ def extract_image(excel_file):
         image = save_in_minio(location=loc)
         if image:
             images.append(image)
-    shutil.rmtree(extract_dir) # delete temp folder
-    temp_zip.unlink() # delete temp file
+    shutil.rmtree(extract_dir)  # delete temp folder
+    temp_zip.unlink()  # delete temp file
 
     return images
 
 
 def xls_to_xlsx(xls_filename: str, output_dir="tmp"):
     """Converts an XLS file to XLSX using xlrd and openpyxl."""
+
     subprocess.run(
         [
             "libreoffice",
             "--headless",
             "--convert-to",
             "xlsx",
-            os.path.join(output_dir, xls_filename),
+            os.path.join(xls_filename),
             "--outdir",
             output_dir,
         ],
         check=True,
     )
 
-    # Cleanup the temporary docx file
-    return os.path.join(output_dir, xls_filename.replace(".xls", ".xlsx"))
+    pre, _ = os.path.splitext(xls_filename)
+
+    return os.path.join(pre + ".xlsx")
 
 
-def extract_excel_data(excel_file):
+def extract_excel_data(excel_file, minio_path):
     """
     Extracts data and images from an Excel file (xls or xlsx).
 
@@ -81,7 +86,7 @@ def extract_excel_data(excel_file):
     pages = []
     tags = []
     for page_num, sheet_name in enumerate(wb.sheetnames):
-        page_data = {"id": page_num, "fulltext": ""}
+        page_data = {"id": page_num, "fulltext": "", "tables": []}
 
         sheet = wb[sheet_name]
         # print(f"Sheet: {sheet_name}")
@@ -92,23 +97,23 @@ def extract_excel_data(excel_file):
             rows.append(" ".join([str(cell.value) for cell in row if cell.value]))
 
         page_data.update({"fulltext": "\n".join(rows)})
+        table = pd.read_excel(excel_file)
+        tab_json_str = table.to_json()
+        page_data["tables"].append(tab_json_str)
         pages.append(page_data)
         tags.extend(extract_tags(page_data.get("fulltext")))
         # Extract images
         # calling the image_loader
-        
-        
 
     images = extract_image(excel_file)
-    path = pathlib.Path(excel_file)
+    path = Path(excel_file)
     output_dict = {
         "name": path.parts[-1],
-        "path": str(path),
+        "path": minio_path,
         # "type": "TYPE",
         # "rubrique": "RU",
         "extension": path.name.split(".")[-1],
         "tags": tags,
-        "tables": [],
         "images": images,
         "pages": pages,
     }

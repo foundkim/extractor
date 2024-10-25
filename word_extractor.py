@@ -17,12 +17,11 @@ def word_to_pdf(doc_filename: str, output_dir="tmp"):
         ],
         check=True,
     )
-    path = Path(doc_filename)
+    pre, _ = os.path.splitext(doc_filename)
     # Cleanup the temporary docx file
-    return os.path.join(output_dir,  path.name.split('.doc')[0] + '.pdf')
+    return os.path.join(pre + '.pdf')
 
-
-def extract_word_data(doc_file):
+def extract_word_data(doc_file, minio_path):
     """
     Extracts data and images from an Word file (doc or docx).
 
@@ -33,5 +32,5 @@ def extract_word_data(doc_file):
         raise ValueError("path must be an excel file")
 
     doc = word_to_pdf(doc_file)
-    os.remove(doc)
-    return extract_pdf_data(doc)
+    # os.remove(doc)
+    return extract_pdf_data(doc, minio_path)
